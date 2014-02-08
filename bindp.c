@@ -109,7 +109,7 @@ int connect (int fd, const struct sockaddr *sk, socklen_t sl){
 	
 	rsk_in = (struct sockaddr_in *)sk;
 
-    if ((rsk_in->sin_family == AF_INET) && (bind_addr_env)) {
+    if ((rsk_in->sin_family == AF_INET) && (bind_addr_env || bind_port_env)) {
 		real_bind (fd, (struct sockaddr *)local_sockaddr_in, sizeof (struct sockaddr));
 	}
 
