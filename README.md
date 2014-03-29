@@ -28,3 +28,5 @@ sourceaddress for ircII:
     BIND_ADDR="your-virt-ip" LD_PRELOAD=./bind.so ircII
 
 Note that you have to set up your servers virtual IP first.
+
+Enjoy it.
