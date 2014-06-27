@@ -28,7 +28,7 @@ OR:
 
 Just want to change the nginx's port:
         
-    BIND_PORT="8888" LD_PRELOAD=/your_path/bindp.so service nginx start
+    BIND_PORT="8888" LD_PRELOAD=/your_path/bindp.so /usr/sbin/nginx -c /etc/nginx/nginx.conf
 
 Example in bash to use your virtual IP as your outgoing
 sourceaddress for ircII:
