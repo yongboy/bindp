@@ -19,7 +19,8 @@
 
    Compile on Linux with:
    gcc -nostartfiles -fpic -shared bindp.c -o bindp.so -ldl -D_GNU_SOURCE
-
+   or just use make be easy:
+   make
 
    Example in bash to make inetd only listen to the localhost
    lo interface, thus disabling remote connections and only
@@ -37,6 +38,8 @@
 
    Note that you have to set up your servers virtual IP first.
 
+   Add SO_REUSEPORT support within Centos7 or Linux OS with kernel >= 3.9, for the applictions with multi-process support just listen one port now
+   REUSE_PORT=1 LD_PRELOAD=./bindp.so python server.py &
 
    This program was edited by nieyong
    email: nieyong@youku.com
@@ -54,13 +57,12 @@
 int (*real_bind)(int, const struct sockaddr *, socklen_t);
 int (*real_connect)(int, const struct sockaddr *, socklen_t);
 
-char *bind_addr_env;
-unsigned long int bind_addr_saddr;
+unsigned long int bind_addr_saddr = 0;
 unsigned long int inaddr_any_saddr;
 struct sockaddr_in local_sockaddr_in[] = { 0 };
 
-char *bind_port_env;
-unsigned int bind_port_saddr;
+unsigned int bind_port_saddr = 0;
+unsigned int reuse_port = 0;
 
 void _init (void){
 	const char *err;
@@ -76,6 +78,8 @@ void _init (void){
 	}
 
 	inaddr_any_saddr = htonl (INADDR_ANY);
+
+	char *bind_addr_env;	
 	if (bind_addr_env = getenv ("BIND_ADDR")) {
 		bind_addr_saddr = inet_addr (bind_addr_env);
 		local_sockaddr_in->sin_family = AF_INET;
@@ -83,9 +87,15 @@ void _init (void){
 		local_sockaddr_in->sin_port = htons (0);
 	}
 
+	char *bind_port_env;
 	if (bind_port_env = getenv ("BIND_PORT")) {
 		bind_port_saddr = atoi(bind_port_env);
 		local_sockaddr_in->sin_port = htons (bind_port_saddr);
+	}
+
+	char *reuse_port_env;
+	if (reuse_port_env = getenv ("REUSE_PORT")) {
+		reuse_port = atoi(reuse_port_env);
 	}
 }
 
@@ -95,10 +105,17 @@ int bind (int fd, const struct sockaddr *sk, socklen_t sl){
 	lsk_in = (struct sockaddr_in *)sk;
     if ((lsk_in->sin_family == AF_INET)
 		&& (lsk_in->sin_addr.s_addr == inaddr_any_saddr)){    	
-		if(bind_addr_env)
+		if(bind_addr_saddr)
 			lsk_in->sin_addr.s_addr = bind_addr_saddr;
 		if (bind_port_saddr)
 			lsk_in->sin_port = htons (bind_port_saddr);
+
+		#ifdef SO_REUSEPORT
+		if(reuse_port){
+			int one = 1;
+			setsockopt(fd, SOL_SOCKET, SO_REUSEPORT, &one, sizeof(one));
+		}
+		#endif
 	}
 
 	return real_bind (fd, sk, sl);
@@ -109,7 +126,7 @@ int connect (int fd, const struct sockaddr *sk, socklen_t sl){
 	
 	rsk_in = (struct sockaddr_in *)sk;
 
-    if ((rsk_in->sin_family == AF_INET) && (bind_addr_env || bind_port_env)) {
+    if ((rsk_in->sin_family == AF_INET) && (bind_addr_saddr || bind_port_saddr)) {
 		real_bind (fd, (struct sockaddr *)local_sockaddr_in, sizeof (struct sockaddr));
 	}
 
