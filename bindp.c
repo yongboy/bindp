@@ -18,7 +18,7 @@
    variable BIND_ADDR.
 
    Compile on Linux with:
-   gcc -nostartfiles -fpic -shared bindp.c -o bindp.so -ldl -D_GNU_SOURCE
+   gcc -nostartfiles -fpic -shared bindp.c -o libbindp.so -ldl -D_GNU_SOURCE
    or just use make be easy:
    make
 
@@ -26,10 +26,10 @@
    lo interface, thus disabling remote connections and only
    enable to/from localhost:
 
-   BIND_ADDR="127.0.0.1" BIND_PORT="49888" LD_PRELOAD=./bindp.so curl http://192.168.190.128
+   BIND_ADDR="127.0.0.1" BIND_PORT="49888" LD_PRELOAD=./libbindp.so curl http://192.168.190.128
 
    OR:
-   BIND_ADDR="127.0.0.1" LD_PRELOAD=./bindp.so curl http://192.168.190.128
+   BIND_ADDR="127.0.0.1" LD_PRELOAD=./libbindp.so curl http://192.168.190.128
 
    Example in bash to use your virtual IP as your outgoing
    sourceaddress for ircII:
@@ -39,7 +39,8 @@
    Note that you have to set up your servers virtual IP first.
 
    Add SO_REUSEPORT support within Centos7 or Linux OS with kernel >= 3.9, for the applictions with multi-process support just listen one port now
-   REUSE_PORT=1 LD_PRELOAD=./bindp.so python server.py &
+   REUSE_PORT=1 LD_PRELOAD=./libbindp.so python server.py &
+   REUSE_PORT=1 LD_PRELOAD=./libbindp.so java -server -jar your.jar &
 
    This program was edited by nieyong
    email: nieyong@youku.com
@@ -58,7 +59,6 @@ int (*real_bind)(int, const struct sockaddr *, socklen_t);
 int (*real_connect)(int, const struct sockaddr *, socklen_t);
 
 unsigned long int bind_addr_saddr = 0;
-unsigned long int inaddr_any_saddr;
 struct sockaddr_in local_sockaddr_in[] = { 0 };
 
 unsigned int bind_port_saddr = 0;
@@ -77,10 +77,8 @@ void _init (void){
 		fprintf (stderr, "dlsym (connect): %s\n", err);
 	}
 
-	inaddr_any_saddr = htonl (INADDR_ANY);
-
 	char *bind_addr_env;	
-	if (bind_addr_env = getenv ("BIND_ADDR")) {
+	if ((bind_addr_env = getenv ("BIND_ADDR"))) {
 		bind_addr_saddr = inet_addr (bind_addr_env);
 		local_sockaddr_in->sin_family = AF_INET;
 		local_sockaddr_in->sin_addr.s_addr = bind_addr_saddr;
@@ -88,13 +86,13 @@ void _init (void){
 	}
 
 	char *bind_port_env;
-	if (bind_port_env = getenv ("BIND_PORT")) {
+	if ((bind_port_env = getenv ("BIND_PORT"))) {
 		bind_port_saddr = atoi(bind_port_env);
 		local_sockaddr_in->sin_port = htons (bind_port_saddr);
 	}
 
 	char *reuse_port_env;
-	if (reuse_port_env = getenv ("REUSE_PORT")) {
+	if ((reuse_port_env = getenv ("REUSE_PORT"))) {
 		reuse_port = atoi(reuse_port_env);
 	}
 }
@@ -103,20 +101,19 @@ int bind (int fd, const struct sockaddr *sk, socklen_t sl){
 	static struct sockaddr_in *lsk_in;
 
 	lsk_in = (struct sockaddr_in *)sk;
-    if ((lsk_in->sin_family == AF_INET)
-		&& (lsk_in->sin_addr.s_addr == inaddr_any_saddr)){    	
-		if(bind_addr_saddr)
-			lsk_in->sin_addr.s_addr = bind_addr_saddr;
-		if (bind_port_saddr)
-			lsk_in->sin_port = htons (bind_port_saddr);
+	
+	if(bind_addr_saddr)
+		lsk_in->sin_addr.s_addr = bind_addr_saddr;
 
-		#ifdef SO_REUSEPORT
-		if(reuse_port){
-			int one = 1;
-			setsockopt(fd, SOL_SOCKET, SO_REUSEPORT, &one, sizeof(one));
-		}
-		#endif
+	if (bind_port_saddr)
+		lsk_in->sin_port = htons (bind_port_saddr);
+
+	#ifdef SO_REUSEPORT
+	if (reuse_port){
+		int one = 1;
+		setsockopt(fd, SOL_SOCKET, SO_REUSEPORT, &one, sizeof(one));
 	}
+	#endif
 
 	return real_bind (fd, sk, sl);
 }
