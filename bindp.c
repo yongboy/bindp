@@ -18,7 +18,7 @@
    variable BIND_ADDR.
 
    Compile on Linux with:
-   gcc -nostartfiles -fpic -shared bindp.c -o libbindp.so -ldl -D_GNU_SOURCE
+   gcc -nostartfiles -fpic -shared bindp.c -o libindp.so -ldl -D_GNU_SOURCE
    or just use make be easy:
    make
 
@@ -26,10 +26,10 @@
    lo interface, thus disabling remote connections and only
    enable to/from localhost:
 
-   BIND_ADDR="127.0.0.1" BIND_PORT="49888" LD_PRELOAD=./libbindp.so curl http://192.168.190.128
+   BIND_ADDR="127.0.0.1" BIND_PORT="49888" LD_PRELOAD=./libindp.so curl http://192.168.190.128
 
    OR:
-   BIND_ADDR="127.0.0.1" LD_PRELOAD=./libbindp.so curl http://192.168.190.128
+   BIND_ADDR="127.0.0.1" LD_PRELOAD=./libindp.so curl http://192.168.190.128
 
    Example in bash to use your virtual IP as your outgoing
    sourceaddress for ircII:
@@ -39,11 +39,10 @@
    Note that you have to set up your servers virtual IP first.
 
    Add SO_REUSEPORT support within Centos7 or Linux OS with kernel >= 3.9, for the applictions with multi-process support just listen one port now
-   REUSE_PORT=1 LD_PRELOAD=./libbindp.so python server.py &
-   REUSE_PORT=1 LD_PRELOAD=./libbindp.so java -server -jar your.jar &
+   REUSE_ADDR=1 REUSE_PORT=1 LD_PRELOAD=./libindp.so python server.py &
+   RREUSE_ADDR=1 EUSE_PORT=1 LD_PRELOAD=./libindp.so java -server -jar your.jar &
 
-   This program was edited by nieyong
-   email: nieyong@youku.com
+   email: nieyong@staff.weibo.com
    web:   http://www.blogjava.net/yongboy
 */
 
@@ -63,6 +62,7 @@ struct sockaddr_in local_sockaddr_in[] = { 0 };
 
 unsigned int bind_port_saddr = 0;
 unsigned int reuse_port = 0;
+unsigned int reuse_addr = 0;
 
 void _init (void){
 	const char *err;
@@ -91,6 +91,11 @@ void _init (void){
 		local_sockaddr_in->sin_port = htons (bind_port_saddr);
 	}
 
+	char *reuse_addr_env;
+	if ((reuse_addr_env = getenv ("REUSE_ADDR"))) { 
+		reuse_addr = atoi(reuse_addr_env);
+	}
+
 	char *reuse_port_env;
 	if ((reuse_port_env = getenv ("REUSE_PORT"))) {
 		reuse_port = atoi(reuse_port_env);
@@ -108,9 +113,14 @@ int bind (int fd, const struct sockaddr *sk, socklen_t sl){
 	if (bind_port_saddr)
 		lsk_in->sin_port = htons (bind_port_saddr);
 
+	int one = 1;
+
+	if (reuse_addr){
+		setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &one, sizeof(one));
+	}
+
 	#ifdef SO_REUSEPORT
 	if (reuse_port){
-		int one = 1;
 		setsockopt(fd, SOL_SOCKET, SO_REUSEPORT, &one, sizeof(one));
 	}
 	#endif
@@ -123,8 +133,8 @@ int connect (int fd, const struct sockaddr *sk, socklen_t sl){
 	
 	rsk_in = (struct sockaddr_in *)sk;
 
-    if ((rsk_in->sin_family == AF_INET) && (bind_addr_saddr || bind_port_saddr)) {
-		real_bind (fd, (struct sockaddr *)local_sockaddr_in, sizeof (struct sockaddr));
+    	if ((rsk_in->sin_family == AF_INET) && (bind_addr_saddr || bind_port_saddr)) {
+		bind (fd, (struct sockaddr *)local_sockaddr_in, sizeof (struct sockaddr));
 	}
 
 	return real_connect (fd, sk, sl);
