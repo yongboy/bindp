@@ -48,7 +48,7 @@ sourceaddress for ircII:
 
 Note that you have to set up your server's virtual IP first.
 
-### SO_REUSEADDR/SO_REUSEPORT
+### `SO_REUSEADDR`/`SO_REUSEPORT`
 
 Now, I add the `SO_REUSEADDR`/`SO_REUSEPORT` support within Centos7 or Linux OS with kernel >= 3.9, for the old applictions with multi-process just listen the same port now:
 
@@ -65,5 +65,22 @@ And, for socket client's connect you can also reuse the same client's ip and por
     REUSE_PORT=1 BIND_ADDR="10.10.10.10" BIND_PORT=49999 LD_PRELOAD=/the_path/libindp.so nc 10.10.10.11 10001
 
     REUSE_PORT=1 BIND_ADDR="10.10.10.10" BIND_PORT=49999 LD_PRELOAD=/the_path/libindp.so nc 10.10.10.11 10011
+
+### `IP_TRANSPARENT` Support
+
+With `IP_TRANSPARENT` support, we can bind more nonlocal IP address, some one called "AnyIP".
+
+```bash
+IP_TRANSPARENT=1 REUSE_PORT=1 BIND_ADDR="NONLOCAL_IP" BIND_PORT=Your_Bind_Port LD_PRELOAD=/the_path/libindp.so nc The_Target_Address The_Target_Port
+```
+
+> The `IP_TRANSPARENT` operation need root right
+
+And don't forget, you should have set the ip roule before, as below example:
+
+```bash
+ip rule add iif eth0 tab 100
+ip route add local 0.0.0.0/0 dev lo tab 100
+```
 
 Enjoy it :))
