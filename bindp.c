@@ -63,79 +63,88 @@ struct sockaddr_in local_sockaddr_in[] = { 0 };
 unsigned int bind_port_saddr = 0;
 unsigned int reuse_port = 0;
 unsigned int reuse_addr = 0;
+unsigned int ip_transparent = 0;
 
 void _init (void){
-	const char *err;
+    const char *err;
 
-	real_bind = dlsym (RTLD_NEXT, "bind");
-	if ((err = dlerror ()) != NULL) {
-		fprintf (stderr, "dlsym (bind): %s\n", err);
-	}
+    real_bind = dlsym (RTLD_NEXT, "bind");
+    if ((err = dlerror ()) != NULL) {
+        fprintf (stderr, "dlsym (bind): %s\n", err);
+    }
 
-	real_connect = dlsym (RTLD_NEXT, "connect");
-	if ((err = dlerror ()) != NULL) {
-		fprintf (stderr, "dlsym (connect): %s\n", err);
-	}
+    real_connect = dlsym (RTLD_NEXT, "connect");
+    if ((err = dlerror ()) != NULL) {
+        fprintf (stderr, "dlsym (connect): %s\n", err);
+    }
 
-	char *bind_addr_env;	
-	if ((bind_addr_env = getenv ("BIND_ADDR"))) {
-		bind_addr_saddr = inet_addr (bind_addr_env);
-		local_sockaddr_in->sin_family = AF_INET;
-		local_sockaddr_in->sin_addr.s_addr = bind_addr_saddr;
-		local_sockaddr_in->sin_port = htons (0);
-	}
+    char *bind_addr_env;
+    if ((bind_addr_env = getenv ("BIND_ADDR"))) {
+        bind_addr_saddr = inet_addr (bind_addr_env);
+        local_sockaddr_in->sin_family = AF_INET;
+        local_sockaddr_in->sin_addr.s_addr = bind_addr_saddr;
+        local_sockaddr_in->sin_port = htons (0);
+    }
 
-	char *bind_port_env;
-	if ((bind_port_env = getenv ("BIND_PORT"))) {
-		bind_port_saddr = atoi(bind_port_env);
-		local_sockaddr_in->sin_port = htons (bind_port_saddr);
-	}
+    char *bind_port_env;
+    if ((bind_port_env = getenv ("BIND_PORT"))) {
+        bind_port_saddr = atoi(bind_port_env);
+        local_sockaddr_in->sin_port = htons (bind_port_saddr);
+    }
 
-	char *reuse_addr_env;
-	if ((reuse_addr_env = getenv ("REUSE_ADDR"))) { 
-		reuse_addr = atoi(reuse_addr_env);
-	}
+    char *reuse_addr_env;
+    if ((reuse_addr_env = getenv ("REUSE_ADDR"))) {
+        reuse_addr = atoi(reuse_addr_env);
+    }
 
-	char *reuse_port_env;
-	if ((reuse_port_env = getenv ("REUSE_PORT"))) {
-		reuse_port = atoi(reuse_port_env);
-	}
+    char *reuse_port_env;
+    if ((reuse_port_env = getenv ("REUSE_PORT"))) {
+        reuse_port = atoi(reuse_port_env);
+    }
+
+    char *ip_transparent_env;
+    if ((ip_transparent_env = getenv ("IP_TRANSPARENT"))) {
+        ip_transparent = atoi(ip_transparent_env);
+    }
 }
 
 int bind (int fd, const struct sockaddr *sk, socklen_t sl){
-	static struct sockaddr_in *lsk_in;
+    static struct sockaddr_in *lsk_in;
 
-	lsk_in = (struct sockaddr_in *)sk;
-	
-	if(bind_addr_saddr)
-		lsk_in->sin_addr.s_addr = bind_addr_saddr;
+    lsk_in = (struct sockaddr_in *)sk;
 
-	if (bind_port_saddr)
-		lsk_in->sin_port = htons (bind_port_saddr);
+    if(bind_addr_saddr)
+        lsk_in->sin_addr.s_addr = bind_addr_saddr;
 
-	int one = 1;
+    if (bind_port_saddr)
+        lsk_in->sin_port = htons (bind_port_saddr);
 
-	if (reuse_addr){
-		setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &one, sizeof(one));
-	}
+    if (reuse_addr){
+        setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &reuse_addr, sizeof(reuse_addr));
+    }
 
-	#ifdef SO_REUSEPORT
-	if (reuse_port){
-		setsockopt(fd, SOL_SOCKET, SO_REUSEPORT, &one, sizeof(one));
-	}
-	#endif
+#ifdef SO_REUSEPORT
+    if (reuse_port){
+        setsockopt(fd, SOL_SOCKET, SO_REUSEPORT, &reuse_port, sizeof(reuse_port));
+    }
+#endif
 
-	return real_bind (fd, sk, sl);
+    if (ip_transparent){
+        int opt =1;
+        setsockopt(fd, SOL_IP, IP_TRANSPARENT, &ip_transparent, sizeof(ip_transparent));
+    }
+
+    return real_bind (fd, sk, sl);
 }
 
 int connect (int fd, const struct sockaddr *sk, socklen_t sl){
-	static struct sockaddr_in *rsk_in;
-	
-	rsk_in = (struct sockaddr_in *)sk;
+    static struct sockaddr_in *rsk_in;
 
-    	if ((rsk_in->sin_family == AF_INET) && (bind_addr_saddr || bind_port_saddr)) {
-		bind (fd, (struct sockaddr *)local_sockaddr_in, sizeof (struct sockaddr));
-	}
+    rsk_in = (struct sockaddr_in *)sk;
 
-	return real_connect (fd, sk, sl);
+    if ((rsk_in->sin_family == AF_INET) && (bind_addr_saddr || bind_port_saddr)) {
+        bind (fd, (struct sockaddr *)local_sockaddr_in, sizeof (struct sockaddr));
+    }
+
+    return real_connect (fd, sk, sl);
 }
