@@ -40,7 +40,7 @@
 
    Add SO_REUSEPORT support within Centos7 or Linux OS with kernel >= 3.9, for the applictions with multi-process support just listen one port now
    REUSE_ADDR=1 REUSE_PORT=1 LD_PRELOAD=./libindp.so python server.py &
-   RREUSE_ADDR=1 EUSE_PORT=1 LD_PRELOAD=./libindp.so java -server -jar your.jar &
+   REUSE_ADDR=1 REUSE_PORT=1 LD_PRELOAD=./libindp.so java -server -jar your.jar &
 
    email: nieyong@staff.weibo.com
    web:   http://www.blogjava.net/yongboy
