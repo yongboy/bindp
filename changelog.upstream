@@ -1,3 +1,11 @@
+commit 7d2ff2b6f4175e799b8ca8b04e92add79b801442
+Author: Patrick Schleizer <adrelanos@riseup.net>
+Date:   Mon Feb 13 17:35:14 2017 +0000
+
+    debian packaging
+    
+    split from uwt package into this standalone package
+
 commit 3656d46afd047975a294be99cc6e97e7576aa90b
 Merge: fcb2f84 587311a
 Author: yongboy <yongboy@gmail.com>
