@@ -118,70 +118,64 @@ int bind (int fd, const struct sockaddr *sk, socklen_t sl){
 
     unsigned short _pf = *((unsigned short*) sk);
     switch (_pf){
-    case AF_INET:
-    {
-        static struct sockaddr_in *lsk_in;
+        case AF_INET:
+            {
+                static struct sockaddr_in *lsk_in;
 
-        lsk_in = (struct sockaddr_in *)sk;
+                lsk_in = (struct sockaddr_in *)sk;
 
-        if (debug_enabled){
-            char original_ip [INET_ADDRSTRLEN];
-            inet_ntop(AF_INET,&(lsk_in->sin_addr),original_ip,INET_ADDRSTRLEN);
-            int original_port = ntohs(lsk_in->sin_port);
-            char *l_bind_addr = getenv ("BIND_ADDR");
-            char *l_bind_port = getenv ("BIND_PORT");
-            printf("[-] LIB received AF_INET bind request\n");
-            if (l_bind_addr && l_bind_port){
-                printf("[-] Changing %s:%d to %s:%s\n" , original_ip,original_port,l_bind_addr,l_bind_port);
-            }else{
-                printf("[!] AF_INET: Leaving request unchanged\n");
+                if (debug_enabled) {
+                    char original_ip [INET_ADDRSTRLEN];
+                    inet_ntop(AF_INET,&(lsk_in->sin_addr),original_ip,INET_ADDRSTRLEN);
+                    int original_port = ntohs(lsk_in->sin_port);
+                    char *l_bind_addr = getenv ("BIND_ADDR");
+                    char *l_bind_port = getenv ("BIND_PORT");
+                    printf("[-] LIB received AF_INET bind request\n");
+                    if (l_bind_addr && l_bind_port){
+                        printf("[-] Changing %s:%d to %s:%s\n" , original_ip,original_port,l_bind_addr,l_bind_port);
+                    }else{
+                        printf("[!] AF_INET: Leaving request unchanged\n");
+                    }
+                }
+
+                if(bind_addr_saddr)
+                    lsk_in->sin_addr.s_addr = bind_addr_saddr;
+
+                if (bind_port_saddr)
+                    lsk_in->sin_port = htons (bind_port_saddr);
             }
-        }
+            break;
 
+        case AF_UNIX:
+            printf("[-] LIB received AF_UNIX bind request\n");
+            printf("[-] AF_UNIX: Leaving request unchanged\n");
+            break;
 
-        if(bind_addr_saddr)
-            lsk_in->sin_addr.s_addr = bind_addr_saddr;
+        /*
+            Other families handling
+        */
 
-        if (bind_port_saddr)
-            lsk_in->sin_port = htons (bind_port_saddr);
-
+        default:
+            break;
     }
-        break;
-    case AF_UNIX:
-        printf("[-] LIB received AF_UNIX bind request\n");
-        printf("[-] AF_UNIX: Leaving request unchanged\n");
-        break;
-
-    /*
-        Other families handling
-
-    */
-
-    default:
-
-        break;
-
-    }
-
-
 
     /*
         FIXME: Be careful when using setsockopt
         Is it valid to use these options for AF_UNIX?
         Must be checked
-
     */
-    if (reuse_addr){
+
+    if (reuse_addr) {
         setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &reuse_addr, sizeof(reuse_addr));
     }
 
 #ifdef SO_REUSEPORT
-    if (reuse_port){
+    if (reuse_port) {
         setsockopt(fd, SOL_SOCKET, SO_REUSEPORT, &reuse_port, sizeof(reuse_port));
     }
 #endif
 
-    if (ip_transparent){
+    if (ip_transparent) {
         int opt =1;
         setsockopt(fd, SOL_IP, IP_TRANSPARENT, &ip_transparent, sizeof(ip_transparent));
     }
