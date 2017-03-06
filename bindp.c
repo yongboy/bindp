@@ -65,7 +65,7 @@ unsigned int reuse_port = 0;
 unsigned int reuse_addr = 0;
 unsigned int ip_transparent = 0;
 
-void _init (void){
+void _init (void) {
     const char *err;
 
     real_bind = dlsym (RTLD_NEXT, "bind");
@@ -108,7 +108,7 @@ void _init (void){
     }
 }
 
-int bind (int fd, const struct sockaddr *sk, socklen_t sl){
+int bind (int fd, const struct sockaddr *sk, socklen_t sl) {
     int debug_enabled = 1 ;
     /*
         As defined in linux/socket.h ,__kernel_sa_family_t is 2 bytes wide.
@@ -133,7 +133,7 @@ int bind (int fd, const struct sockaddr *sk, socklen_t sl){
                     printf("[-] LIB received AF_INET bind request\n");
                     if (l_bind_addr && l_bind_port) {
                         printf("[-] Changing %s:%d to %s:%s\n" , original_ip,original_port,l_bind_addr,l_bind_port);
-                    }else{
+                    }else {
                         printf("[!] AF_INET: Leaving request unchanged\n");
                     }
                 }
@@ -184,7 +184,7 @@ int bind (int fd, const struct sockaddr *sk, socklen_t sl){
     return real_bind (fd, sk, sl);
 }
 
-int connect (int fd, const struct sockaddr *sk, socklen_t sl){
+int connect (int fd, const struct sockaddr *sk, socklen_t sl) {
     static struct sockaddr_in *rsk_in;
 
     rsk_in = (struct sockaddr_in *)sk;
