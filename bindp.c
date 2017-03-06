@@ -46,6 +46,7 @@
    web:   http://www.blogjava.net/yongboy
 */
 
+#include <arpa/inet.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/types.h>
