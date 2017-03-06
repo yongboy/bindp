@@ -109,16 +109,68 @@ void _init (void){
 }
 
 int bind (int fd, const struct sockaddr *sk, socklen_t sl){
-    static struct sockaddr_in *lsk_in;
+    int debug_enabled = 1 ;
+    /*
+        As defined in linux/socket.h ,__kernel_sa_family_t is 2 bytes wide.
+        We read the first two bytes of sk without using cast to protocol families
 
-    lsk_in = (struct sockaddr_in *)sk;
+    */
 
-    if(bind_addr_saddr)
-        lsk_in->sin_addr.s_addr = bind_addr_saddr;
+    unsigned short _pf = *((unsigned short*) sk);
+    switch (_pf){
+    case AF_INET:
+    {
+        static struct sockaddr_in *lsk_in;
 
-    if (bind_port_saddr)
-        lsk_in->sin_port = htons (bind_port_saddr);
+        lsk_in = (struct sockaddr_in *)sk;
 
+        if (debug_enabled){
+            char original_ip [INET_ADDRSTRLEN];
+            inet_ntop(AF_INET,&(lsk_in->sin_addr),original_ip,INET_ADDRSTRLEN);
+            int original_port = ntohs(lsk_in->sin_port);
+            char *l_bind_addr = getenv ("BIND_ADDR");
+            char *l_bind_port = getenv ("BIND_PORT");
+            printf("[-] LIB received AF_INET bind request\n");
+            if (l_bind_addr && l_bind_port){
+                printf("[-] Changing %s:%d to %s:%s\n" , original_ip,original_port,l_bind_addr,l_bind_port);
+            }else{
+                printf("[!] AF_INET: Leaving request unchanged\n");
+            }
+        }
+
+
+        if(bind_addr_saddr)
+            lsk_in->sin_addr.s_addr = bind_addr_saddr;
+
+        if (bind_port_saddr)
+            lsk_in->sin_port = htons (bind_port_saddr);
+
+    }
+        break;
+    case AF_UNIX:
+        printf("[-] LIB received AF_UNIX bind request\n");
+        printf("[-] AF_UNIX: Leaving request unchanged\n");
+        break;
+
+    /*
+        Other families handling
+
+    */
+
+    default:
+
+        break;
+
+    }
+
+
+
+    /*
+        FIXME: Be careful when using setsockopt
+        Is it valid to use these options for AF_UNIX?
+        Must be checked
+
+    */
     if (reuse_addr){
         setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &reuse_addr, sizeof(reuse_addr));
     }
