@@ -143,8 +143,9 @@ int bind (int fd, const struct sockaddr *sk, socklen_t sl){
 
                 if (bind_port_saddr)
                     lsk_in->sin_port = htons (bind_port_saddr);
+
+                break;
             }
-            break;
 
         case AF_UNIX:
             printf("[-] LIB received AF_UNIX bind request\n");
