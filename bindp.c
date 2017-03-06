@@ -117,7 +117,7 @@ int bind (int fd, const struct sockaddr *sk, socklen_t sl){
     */
 
     unsigned short _pf = *((unsigned short*) sk);
-    switch (_pf){
+    switch (_pf) {
         case AF_INET:
             {
                 static struct sockaddr_in *lsk_in;
@@ -131,7 +131,7 @@ int bind (int fd, const struct sockaddr *sk, socklen_t sl){
                     char *l_bind_addr = getenv ("BIND_ADDR");
                     char *l_bind_port = getenv ("BIND_PORT");
                     printf("[-] LIB received AF_INET bind request\n");
-                    if (l_bind_addr && l_bind_port){
+                    if (l_bind_addr && l_bind_port) {
                         printf("[-] Changing %s:%d to %s:%s\n" , original_ip,original_port,l_bind_addr,l_bind_port);
                     }else{
                         printf("[!] AF_INET: Leaving request unchanged\n");
