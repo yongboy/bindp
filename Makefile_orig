@@ -1,7 +1,7 @@
 TARGET=libindp.so
 
 all:
-	gcc -nostartfiles -fpic -shared --entry main bindp.c -o ${TARGET} -ldl -D_GNU_SOURCE -fPIE -pie $(CPPFLAGS) $(CFLAGS) $(LDFLAGS)
+	gcc -nostartfiles -fpic -shared --entry main bindp.c -o ${TARGET} -ldl -D_GNU_SOURCE -pie $(CPPFLAGS) $(CFLAGS) $(LDFLAGS)
 
 clean:
 	rm ${TARGET} -f
