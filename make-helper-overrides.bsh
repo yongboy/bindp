@@ -5,7 +5,7 @@
 
 make_install_hook_post() {
    if [ ! -d "$DESTDIR/usr/sbin" ]; then
-      mkdir --parents "$DESTDIR/usr/lib/uwt"
+      mkdir --parents "$DESTDIR/usr/lib/bindp"
    fi
-   cp libindp.so "$DESTDIR/usr/lib/uwt/"
+   cp libindp.so "$DESTDIR/usr/lib/bindp/"
 }
