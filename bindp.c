@@ -196,3 +196,7 @@ int connect (int fd, const struct sockaddr *sk, socklen_t sl) {
 
     return real_connect (fd, sk, sl);
 }
+
+int main (int argc, char **argv) {
+    return 0;
+}
