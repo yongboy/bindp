@@ -55,7 +55,6 @@
 #include <errno.h>
 #include <arpa/inet.h>
 
-
 int debug_enabled = 1 ;
 
 int (*real_bind)(int, const struct sockaddr *, socklen_t);
@@ -116,7 +115,6 @@ unsigned short get_address_family(const struct sockaddr *sk) {
     /*
         As defined in linux/socket.h ,__kernel_sa_family_t is 2 bytes wide.
         We read the first two bytes of sk without using cast to protocol families
-
     */
     unsigned short _pf = *((unsigned short*) sk);
     return _pf;
@@ -124,8 +122,6 @@ unsigned short get_address_family(const struct sockaddr *sk) {
 
 
 int bind (int fd, const struct sockaddr *sk, socklen_t sl) {
-
-
     unsigned short _pf = get_address_family(sk);
     switch (_pf) {
         case AF_INET:
