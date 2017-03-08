@@ -46,7 +46,6 @@
    web:   http://www.blogjava.net/yongboy
 */
 
-#include <arpa/inet.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/types.h>
@@ -54,11 +53,15 @@
 #include <netinet/in.h>
 #include <dlfcn.h>
 #include <errno.h>
+#include <arpa/inet.h>
+
+
+int debug_enabled = 1 ;
 
 int (*real_bind)(int, const struct sockaddr *, socklen_t);
 int (*real_connect)(int, const struct sockaddr *, socklen_t);
 
-unsigned long int bind_addr_saddr = 0;
+uint32_t bind_addr_saddr = 0;
 struct sockaddr_in local_sockaddr_in[] = { 0 };
 
 unsigned int bind_port_saddr = 0;
@@ -66,7 +69,7 @@ unsigned int reuse_port = 0;
 unsigned int reuse_addr = 0;
 unsigned int ip_transparent = 0;
 
-void _init (void) {
+void _init (void){
     const char *err;
 
     real_bind = dlsym (RTLD_NEXT, "bind");
@@ -109,75 +112,99 @@ void _init (void) {
     }
 }
 
-int bind (int fd, const struct sockaddr *sk, socklen_t sl) {
-    int debug_enabled = 1 ;
+unsigned short get_address_family(const struct sockaddr *sk){
     /*
         As defined in linux/socket.h ,__kernel_sa_family_t is 2 bytes wide.
         We read the first two bytes of sk without using cast to protocol families
 
     */
-
     unsigned short _pf = *((unsigned short*) sk);
-    switch (_pf) {
-        case AF_INET:
-            {
-                static struct sockaddr_in *lsk_in;
+    return _pf;
+}
 
-                lsk_in = (struct sockaddr_in *)sk;
 
-                if (debug_enabled) {
-                    char original_ip [INET_ADDRSTRLEN];
-                    inet_ntop(AF_INET,&(lsk_in->sin_addr),original_ip,INET_ADDRSTRLEN);
-                    int original_port = ntohs(lsk_in->sin_port);
-                    char *l_bind_addr = getenv ("BIND_ADDR");
-                    char *l_bind_port = getenv ("BIND_PORT");
-                    printf("[-] LIB received AF_INET bind request\n");
-                    if (l_bind_addr && l_bind_port) {
-                        printf("[-] Changing %s:%d to %s:%s\n" , original_ip,original_port,l_bind_addr,l_bind_port);
-                    }else {
-                        printf("[!] AF_INET: Leaving request unchanged\n");
-                    }
-                }
+int bind (int fd, const struct sockaddr *sk, socklen_t sl){
 
-                if(bind_addr_saddr)
-                    lsk_in->sin_addr.s_addr = bind_addr_saddr;
 
-                if (bind_port_saddr)
-                    lsk_in->sin_port = htons (bind_port_saddr);
+    unsigned short _pf = get_address_family(sk);
+    switch (_pf){
+    case AF_INET:
+    {
+        static struct sockaddr_in *lsk_in;
 
-                break;
+        lsk_in = (struct sockaddr_in *)sk;
+
+        if (debug_enabled){
+            char original_ip [INET_ADDRSTRLEN];
+            inet_ntop(AF_INET,&(lsk_in->sin_addr),original_ip,INET_ADDRSTRLEN);
+            int original_port = ntohs(lsk_in->sin_port);
+            char *l_bind_addr = getenv ("BIND_ADDR");
+            char *l_bind_port = getenv ("BIND_PORT");
+            printf("[-] LIB received AF_INET bind request\n");
+            if (l_bind_addr && l_bind_port){
+                printf("[-] Changing %s:%d to %s:%s\n" , original_ip,original_port,l_bind_addr,l_bind_port);
+            }else if (l_bind_addr){
+                printf("[-] Changing %s to %s\n" , original_ip,l_bind_addr);
+                printf("[-] AF_INET: Leaving port unchanged\n");
+
+            }else if (l_bind_port){
+                printf("[-] Changing %d to %s\n" ,original_port,l_bind_port);
+                printf("[-] AF_INET: Leaving ip unchanged\n");
+
             }
+            else{
+                printf("[!] AF_INET: Leaving request unchanged\n");
+            }
+        }
 
-        case AF_UNIX:
+
+        if(bind_addr_saddr)
+            lsk_in->sin_addr.s_addr = bind_addr_saddr;
+
+        if (bind_port_saddr)
+            lsk_in->sin_port = htons (bind_port_saddr);
+
+        break;
+
+    }
+
+    case AF_UNIX:
+        if (debug_enabled){
             printf("[-] LIB received AF_UNIX bind request\n");
             printf("[-] AF_UNIX: Leaving request unchanged\n");
-            break;
+        }
+        break;
 
-        /*
-            Other families handling
-        */
+    /*
+        Other families handling
 
-        default:
-            break;
+    */
+
+    default:
+
+        break;
+
     }
+
+
 
     /*
         FIXME: Be careful when using setsockopt
         Is it valid to use these options for AF_UNIX?
         Must be checked
-    */
 
-    if (reuse_addr) {
+    */
+    if (reuse_addr){
         setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &reuse_addr, sizeof(reuse_addr));
     }
 
 #ifdef SO_REUSEPORT
-    if (reuse_port) {
+    if (reuse_port){
         setsockopt(fd, SOL_SOCKET, SO_REUSEPORT, &reuse_port, sizeof(reuse_port));
     }
 #endif
 
-    if (ip_transparent) {
+    if (ip_transparent){
         int opt =1;
         setsockopt(fd, SOL_IP, IP_TRANSPARENT, &ip_transparent, sizeof(ip_transparent));
     }
@@ -185,18 +212,36 @@ int bind (int fd, const struct sockaddr *sk, socklen_t sl) {
     return real_bind (fd, sk, sl);
 }
 
-int connect (int fd, const struct sockaddr *sk, socklen_t sl) {
-    static struct sockaddr_in *rsk_in;
+int connect (int fd, const struct sockaddr *sk, socklen_t sl){
+    unsigned short _pf = get_address_family(sk);
+    if (_pf == AF_INET){
+        /*
+            FIXME: connect function's logic does not make sense.
+            it binds the local socket to the same address to which it calls real_connect to connect to.
+            In other words it connects to itself (why?)
+            to make things less weird I changed the code to only does it's strange task for AF_INET
 
-    rsk_in = (struct sockaddr_in *)sk;
+        */
+        static struct sockaddr_in *rsk_in;
 
-    if ((rsk_in->sin_family == AF_INET) && (bind_addr_saddr || bind_port_saddr)) {
-        bind (fd, (struct sockaddr *)local_sockaddr_in, sizeof (struct sockaddr));
+        rsk_in = (struct sockaddr_in *)sk;
+
+        if ((rsk_in->sin_family == AF_INET) && (bind_addr_saddr || bind_port_saddr)) {
+            bind (fd, sk, sizeof (struct sockaddr));
+        }
+        return real_connect (fd, (struct sockaddr *)local_sockaddr_in, sl);
+    }
+    else {
+        if (debug_enabled){
+            printf("[-] connect(): ignoring to change local address for non AF_INET socket\n");
+        }
+        return real_connect (fd, sk, sl);
+
     }
 
-    return real_connect (fd, sk, sl);
+
 }
 
-int main (int argc, char **argv) {
+int main(int argc,char **argv){
     return 0;
 }
