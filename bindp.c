@@ -171,6 +171,9 @@ int bind (int fd, const struct sockaddr *sk, socklen_t sl) {
         */
 
         default:
+            if (debug_enabled) {
+                printf("[!] LIB received unmanaged address family\n");
+            }
             break;
     }
 
@@ -207,6 +210,9 @@ int connect (int fd, const struct sockaddr *sk, socklen_t sl) {
             In other words it connects to itself (why?)
             to make things less weird I changed the code to only does it's strange task for AF_INET
         */
+        if (debug_enabled) {
+            printf("[!] connect(): AF_INET connect() call\n");
+        }
         static struct sockaddr_in *rsk_in;
 
         rsk_in = (struct sockaddr_in *)sk;
