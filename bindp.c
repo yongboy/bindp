@@ -225,7 +225,6 @@ int connect (int fd, const struct sockaddr *sk, socklen_t sl) {
             printf("[-] connect(): ignoring to change local address for non AF_INET socket\n");
         }
         return real_connect (fd, sk, sl);
-
     }
 }
 
