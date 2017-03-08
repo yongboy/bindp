@@ -142,7 +142,6 @@ int bind (int fd, const struct sockaddr *sk, socklen_t sl) {
                 } else if (l_bind_addr) {
                     printf("[-] Changing %s to %s\n" , original_ip,l_bind_addr);
                     printf("[-] AF_INET: Leaving port unchanged\n");
-
                 } else if (l_bind_port) {
                     printf("[-] Changing %d to %s\n" ,original_port,l_bind_port);
                     printf("[-] AF_INET: Leaving ip unchanged\n");
