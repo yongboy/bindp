@@ -205,22 +205,25 @@ int connect (int fd, const struct sockaddr *sk, socklen_t sl) {
     unsigned short _pf = get_address_family(sk);
     if (_pf == AF_INET) {
         /*
-            FIXME: connect function's logic does not make sense.
-            it binds the local socket to the same address to which it calls real_connect to connect to.
-            In other words it connects to itself (why?)
-            to make things less weird I changed the code to only does it's strange task for AF_INET
+            the default behavior of connect function is that when you
+            don't specify BIND_PORT environmental variable it sets port 0 for
+            the local socket. OS network stack will choose a randome number
+            for the port in this case and also in the case of duplicate port
+            numbers for client sockets
         */
         if (debug_enabled) {
-            printf("[!] connect(): AF_INET connect() call\n");
+            printf("[-] connect(): AF_INET connect() call, binding to local address\n");
         }
         static struct sockaddr_in *rsk_in;
 
         rsk_in = (struct sockaddr_in *)sk;
 
-        if ((rsk_in->sin_family == AF_INET) && (bind_addr_saddr || bind_port_saddr)) {
-            bind (fd, sk, sizeof (struct sockaddr));
+        if (bind_addr_saddr || bind_port_saddr) {
+            int r = bind (fd, (struct sockaddr *)local_sockaddr_in, sizeof (struct sockaddr));
+
         }
-        return real_connect (fd, (struct sockaddr *)local_sockaddr_in, sl);
+        return real_connect (fd, sk, sl);
+
     } else {
         if (debug_enabled) {
             printf("[-] connect(): ignoring to change local address for non AF_INET socket\n");
