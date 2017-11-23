@@ -1,83 +1,86 @@
-#  Binding specific IP and Port for Linux Running Application #
+bindp
+=====
 
-This package is probably most useful for Anonymity Distributions.
+## Intro
 
-This package is produced independently of, and carries no guarantee from,
-The Tor Project.
+With LD\_PRELOAD and `bindp`, you can do:
 
-(This package description has been [automatically](https://github.com/Whonix/whonix-developer-meta-files/blob/master/debug-steps/packaging-helper-script) extracted and mirrored from `debian/control`.)
+- For server application
+    - Assign ip and port for listening
+    - Add SO_REUSEADDR/SO_REUSEPORT for existing application
+- For socket client
+    - Assign special ip and port for connection
+    - Add SO_REUSEPORT for reuse the ip add port
 
-# Generic Readme #
-## Readme Version ##
+## Compile
 
-[Generic Readme](https://github.com/Whonix/whonix-developer-meta-files/blob/master/README_generic.md) Version 0.3
+Compile on Linux with:
 
-## Cooperating Anonymity Distributions ##
+    make
 
-[Generic Readme](https://github.com/Whonix/whonix-developer-meta-files/blob/master/README_generic.md) beings here. Have a look into the `man` sub folder (if available).
+## Usage
 
-The functionality of this package was once exclusively available in the [Whonix](https://www.whonix.org) ([github](https://github.com/Whonix/Whonix)) anonymity distribution.
+### IP & Port
 
-Because multiple projects and individuals stated interest in various of Whonix's functionality (examples: [Qubes OS](http://qubes-os.org/trac) ([discussion](https://groups.google.com/forum/#!topic/qubes-devel/jxr89--oGs0)); [piratelinux](https://github.com/piratelinux) ([discussion](https://github.com/adrelanos/VPN-Firewall/commit/6147f0e606377f5a801e98daf22e24ba2c750a21#commitcomment-6360713))), it's best to share as much source code as possible, it's best to share certain characteristics [(such as /etc/hostname etc.) among all anonymity distributions](https://mailman.boum.org/pipermail/tails-dev/2013-January/002457.html)) Whonix has been split into [multiple separate packages](https://github.com/Whonix).
+How to use it:
 
-## Generic Packaging ##
+    REUSE_ADDR=1 REUSE_PORT=1 BIND_ADDR="your ip" BIND_PORT="your port" LD_PRELOAD=/your_path/libindp.so The_Command_Here ...
 
-Files in `etc/...` in root source folder will be installed to `/etc/...`, files in `usr/...` will be installed to `/usr/...` and so forth. This should make renaming, moving files around, packaging, etc. very simple. Packaging of most packages looks very similar.
 
-## How to use outside of Debian or derivatives ##
+Example in bash to make inetd only listen to the localhost
+lo interface, thus disabling remote connections and only
+enable to/from localhost:
 
-Although probably due to generic packaging not very hard. Still, this requires developer skills. [Ports](https://en.wikipedia.org/wiki/Porting) welcome!
+    BIND_ADDR="127.0.0.1" BIND_PORT="49888" LD_PRELOAD=/your_path/libindp.so curl http://192.168.190.128
 
-## How to Build deb Package ##
+OR:
 
-See comments below and [instructions](https://www.whonix.org/wiki/Dev/Build_Documentation/apparmor-profile-torbrowser).
+    BIND_ADDR="127.0.0.1" LD_PRELOAD=/your_path/libindp.so curl http://192.168.190.128
 
-* Replace `apparmor-profile-torbrowser` with the actual name of this package (equals the root source folder name of this package after you git cloned it).
-* You only need [config-package-dev](https://packages.debian.org/wheezy/config-package-dev), when it is listed in the `Build-Depends:` field in `debian/control`.
-* Many packages do not have signed git tags yet. You may request them if desired.
-* We might later use a [documentation template](https://www.whonix.org/wiki/Template:Build_Documentation_Build_Package).
+Just want to change the nginx's listen port:
 
-## How to install in Debian using apt-get ##
+    BIND_PORT=8888 LD_PRELOAD=/your_path/libindp.so /usr/sbin/nginx -c /etc/nginx/nginx.conf
 
-Binary packages are available in Whonix's APT repository. By no means you are required to use the binary version of this package. This might be interesting for users of Debian and derivatives. **Note, that usage of this package outside of Whonix is untested and there is no maintainer that supports this use case.**
+Example in bash to use your virtual IP as your outgoing
+sourceaddress for ircII:
 
-1\. Get [Whonix's Signing Key](https://www.whonix.org/wiki/Whonix_Signing_Key).
+    BIND_ADDR="your-virt-ip" LD_PRELOAD=/your_path/bind.so ircII
 
-2\. Add Whonix's Signing Key to apt-key.
+Note that you have to set up your server's virtual IP first.
 
+### `SO_REUSEADDR`/`SO_REUSEPORT`
+
+Now, I add the `SO_REUSEADDR`/`SO_REUSEPORT` support within Centos7 or Linux OS with kernel >= 3.9, for the old applictions with multi-process just listen the same port now:
+
+    REUSE_ADDR=1 REUSE_PORT=1 LD_PRELOAD=./libindp.so python server.py &
+
+OR
+
+    REUSE_ADDR=1 REUSE_PORT=1 BIND_PORT=9999 LD_PRELOAD=./libindp.so java -server -jar your.jar &
+
+With libindp.so's support, you can run your app multi-instance just for you need.
+
+And, for socket client's connect you can also reuse the same client's ip and port:
+
+    REUSE_PORT=1 BIND_ADDR="10.10.10.10" BIND_PORT=49999 LD_PRELOAD=/the_path/libindp.so nc 10.10.10.11 10001
+
+    REUSE_PORT=1 BIND_ADDR="10.10.10.10" BIND_PORT=49999 LD_PRELOAD=/the_path/libindp.so nc 10.10.10.11 10011
+
+### `IP_TRANSPARENT` Support
+
+With `IP_TRANSPARENT` support, we can bind more nonlocal IP address, some one called "AnyIP".
+
+```bash
+IP_TRANSPARENT=1 REUSE_PORT=1 BIND_ADDR="NONLOCAL_IP" BIND_PORT=Your_Bind_Port LD_PRELOAD=/the_path/libindp.so nc The_Target_Address The_Target_Port
 ```
-gpg --export 916B8D99C38EAF5E8ADC7A2A8D66066A2EEACCDA | sudo apt-key add -
+
+> The `IP_TRANSPARENT` operation need root right
+
+And don't forget, you should have set the ip roule before, as below example:
+
+```bash
+ip rule add iif eth0 tab 100
+ip route add local 0.0.0.0/0 dev lo tab 100
 ```
 
-3\. Add Whonix's APT repository.
-
-```
-echo "deb http://deb.whonix.org jessie main" > /etc/apt/sources.list.d/whonix.list
-```
-
-4\. Update your package lists.
-
-```
-sudo apt-get update
-```
-
-5\. Install this package. Replace `package-name` with the actual name of this package.
-
-```
-sudo apt-get install package-name
-```
-
-## Cooperation ##
-
-Most welcome. [Ports](https://en.wikipedia.org/wiki/Porting), distribution maintainers, developers, patches, forks, testers, comments, etc. all welcome.
-
-## Contact ##
-
-* Professional Support: https://www.whonix.org/wiki/Support#Professional_Support
-* Free Forum Support: https://www.whonix.org/forum
-* Github Issues
-* twitter: https://twitter.com/Whonix
-
-## Donate ##
-
-* [Donate](https://www.whonix.org/wiki/Donate)
+Enjoy it :))
