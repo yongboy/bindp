@@ -194,7 +194,6 @@ int bind (int fd, const struct sockaddr *sk, socklen_t sl) {
 #endif
 
     if (ip_transparent) {
-        int opt =1;
         setsockopt(fd, SOL_IP, IP_TRANSPARENT, &ip_transparent, sizeof(ip_transparent));
     }
 
@@ -214,13 +213,9 @@ int connect (int fd, const struct sockaddr *sk, socklen_t sl) {
         if (debug_enabled) {
             printf("[-] connect(): AF_INET connect() call, binding to local address\n");
         }
-        static struct sockaddr_in *rsk_in;
-
-        rsk_in = (struct sockaddr_in *)sk;
 
         if (bind_addr_saddr || bind_port_saddr) {
-            int r = bind (fd, (struct sockaddr *)local_sockaddr_in, sizeof (struct sockaddr));
-
+            bind (fd, (struct sockaddr *)local_sockaddr_in, sizeof (struct sockaddr));
         }
         return real_connect (fd, sk, sl);
 
@@ -232,6 +227,9 @@ int connect (int fd, const struct sockaddr *sk, socklen_t sl) {
     }
 }
 
-int main(int argc,char **argv) {
+
+int main(int argc, char **argv) {
+    (void)argc; // Suppress unused parameter warning
+    (void)argv; // Suppress unused parameter warning
     return 0;
 }
