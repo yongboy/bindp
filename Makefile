@@ -1,7 +1,10 @@
 TARGET=libindp.so
+CC=gcc
+CFLAGS=-nostartfiles -fpic -shared -D_GNU_SOURCE -fstack-protector-all -Wall -Wextra -Wformat-security -O2 -D_FORTIFY_SOURCE=2 -fstack-clash-protection -fcf-protection
+LDFLAGS=-ldl -Wl,-z,relro -Wl,-z,now -Wl,-z,defs -Wl,-z,noexecstack
 
 all:
-	gcc -nostartfiles -fpic -shared bindp.c -o ${TARGET} -ldl -D_GNU_SOURCE
+	$(CC) $(CFLAGS) bindp.c -o $(TARGET) $(LDFLAGS)
 
 clean:
-	rm ${TARGET} -f
+	rm -f $(TARGET)
